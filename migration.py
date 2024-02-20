@@ -152,15 +152,22 @@ def migrate_buildah(p):
 
 
 if __name__ == "__main__":
+    tekton_dir = '.tekton' if len(sys.argv) == 1 else sys.argv[1]
+    if not path.isdir(tekton_dir):
+        print(f"""The directory `{tekton_dir}` not found
+Usage:
+    {sys.argv[0]} <path to .tekton directory>""")
+        exit(1)
+
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.width = 8192
-    if path.isdir('.tekton'):
-        for f in [f for f in os.listdir('.tekton')]:
-            fpath = path.join('.tekton', f)
-            with open(fpath, 'r', encoding='utf-8') as file:
-                pipeline = yaml.load(file)
-                for m in [m for m in vars(sys.modules[__name__]).values() if inspect.isfunction(m) and m.__name__.startswith("migrate_")]:
-                    pipeline = m(pipeline)
-            with open(fpath, 'w', encoding='utf-8') as file:
-                yaml.dump(pipeline, file)
+
+    for f in [f for f in os.listdir(tekton_dir)]:
+        fpath = path.join(tekton_dir, f)
+        with open(fpath, 'r', encoding='utf-8') as file:
+            pipeline = yaml.load(file)
+        for m in [m for m in vars(sys.modules[__name__]).values() if inspect.isfunction(m) and m.__name__.startswith("migrate_")]:
+            pipeline = m(pipeline)
+        with open(fpath, 'w', encoding='utf-8') as file:
+            yaml.dump(pipeline, file)
