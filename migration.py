@@ -138,7 +138,7 @@ def migrate_buildah(p):
     return apply(
         apply(
             with_path('spec', 'pipelineSpec', 'tasks'),
-            filter(task_ref_matches('buildah', '^quay\\.io/redhat-appstudio-tekton-catalog/task-buildah:0\\.1@')),
+            if_matches(task_ref_matches('buildah', '^quay\\.io/redhat-appstudio-tekton-catalog/task-buildah:0\\.1@')),
             for_each(
                 apply(
                     with_path('params'),
