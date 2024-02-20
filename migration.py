@@ -20,9 +20,11 @@ def apply(*fns):
     return _apply
 
 
-def with_path(*parts):
+def with_path(*parts, default=None):
     def _with_path(obj):
         for part in parts:
+            if part not in obj and default is not None:
+                obj[part] = default
             obj = obj[part]
         return obj
 
@@ -55,6 +57,7 @@ def task_ref_matches(name, bundle):
         bundle_match = False
         kind_match = False
 
+        name_re = re.compile(name)
         bundle_re = re.compile(bundle)
         for p in task.get('taskRef', {}).get('params', []):
             value = p.get('value')
@@ -62,7 +65,7 @@ def task_ref_matches(name, bundle):
                 case 'kind':
                     kind_match = value == 'task'
                 case 'name':
-                    name_match = value == name
+                    name_match = name_re.match(value)
                 case 'bundle':
                     bundle_match = bundle_re.match(value)
 
@@ -102,7 +105,7 @@ def migrate_git_clone(p):
     return apply(
         apply(
             with_path('spec', 'pipelineSpec', 'tasks'),
-            if_matches(task_ref_matches('git-clone', '^quay\\.io/redhat-appstudio-tekton-catalog/task-git-clone:0\\.1@')),
+            if_matches(task_ref_matches('^git-clone$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-git-clone:0\\.1@')),
             for_each(
                 apply(
                     with_path('params'),
@@ -120,7 +123,7 @@ def migrate_prefetch_dependencies(p):
     return apply(
         apply(
             with_path('spec', 'pipelineSpec', 'tasks'),
-            if_matches(task_ref_matches('prefetch-dependencies', '^quay\\.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0\\.1@')),
+            if_matches(task_ref_matches('^prefetch-dependencies$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0\\.1@')),
             for_each(
                 apply(
                     delete_key('when'),
@@ -134,11 +137,61 @@ def migrate_prefetch_dependencies(p):
     )(p)
 
 
-def migrate_buildah(p):
+def migrate_build_container(p):
     return apply(
         apply(
             with_path('spec', 'pipelineSpec', 'tasks'),
-            if_matches(task_ref_matches('buildah', '^quay\\.io/redhat-appstudio-tekton-catalog/task-buildah:0\\.1@')),
+            if_matches(task_ref_matches('^(?:buildah(?:-(?:\\d+gb|remote))?|s2i-java|s2i-nodejs|)$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-(?:buildah(?:-(?:\\d+gb|remote))|s2i-java|s2i-nodejs)?:0\\.1@')),
+            for_each(
+                apply(
+                    with_path('params'),
+                    append({'name': 'SOURCE_ARTIFACT', 'value': '$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)'}),
+                    append({'name': 'CACHI2_ARTIFACT', 'value': '$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)'})
+                )
+            ),
+        ),
+        lambda _: p
+    )(p)
+
+
+def migrate_sast_snyk_check(p):
+    return apply(
+        apply(
+            with_path('spec', 'pipelineSpec', 'tasks'),
+            if_matches(task_ref_matches('^sast-snyk-check$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check:0\\.1@')),
+            for_each(
+                apply(
+                    with_path('params', default=[]),
+                    append({'name': 'SOURCE_ARTIFACT', 'value': '$(tasks.clone-repository.results.SOURCE_ARTIFACT)'})
+                )
+            ),
+        ),
+        lambda _: p
+    )(p)
+
+
+def migrate_source_build(p):
+    return apply(
+        apply(
+            with_path('spec', 'pipelineSpec', 'tasks'),
+            if_matches(task_ref_matches('^build-source-image$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-source-build:0\\.1@')),
+            for_each(
+                apply(
+                    with_path('params'),
+                    append({'name': 'SOURCE_ARTIFACT', 'value': '$(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)'}),
+                    append({'name': 'CACHI2_ARTIFACT', 'value': '$(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)'})
+                )
+            ),
+        ),
+        lambda _: p
+    )(p)
+
+
+def migrate_tkn_bundle(p):
+    return apply(
+        apply(
+            with_path('spec', 'pipelineSpec', 'tasks'),
+            if_matches(task_ref_matches('^tkn-bundle$', '^quay\\.io/redhat-appstudio-tekton-catalog/task-tkn-bundle:0\\.1@')),
             for_each(
                 apply(
                     with_path('params'),
