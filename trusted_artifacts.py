@@ -1,10 +1,20 @@
 from fn import apply, with_path, if_matches, for_each, update, delete_if, task_ref_matches, append, delete_key, nth, _
+from oci import image_digest_for_tag
+
+
+# quay.io/redhat-appstudio-tekton-catalog/task-git-clone:0.2
+GIT_CLONE_20_REF = 'quay.io/redhat-appstudio-tekton-catalog/pull-request-builds:git-clone-0.2'
+
+# quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0.2
+PREFETCH_DEPENDENCIES_20_REF = 'quay.io/redhat-appstudio-tekton-catalog/pull-request-builds:prefetch-dependencies-0.2'
 
 
 class TrustedArtifacts:
     def __init__(self):
         self.git_clone_artifact = _
         self.prefetch_artifact = _
+        self.git_clone_ref = GIT_CLONE_20_REF + '@' + image_digest_for_tag(GIT_CLONE_20_REF)
+        self.prefetch_dependencies_ref = PREFETCH_DEPENDENCIES_20_REF + '@' + image_digest_for_tag(PREFETCH_DEPENDENCIES_20_REF)
 
     def migrate(self, p):
         try:
@@ -70,8 +80,10 @@ class TrustedArtifacts:
                     apply(
                         with_path('taskRef', 'params'),
                         for_each(
-                            update({'name': 'bundle', 'value': 'huh'},
-                                   lambda p: p['name'] == 'bundle')
+                            update({
+                                'name': 'bundle',
+                                'value': self.git_clone_ref
+                                }, lambda p: p['name'] == 'bundle')
                         )
                     ),
                     apply(
@@ -96,6 +108,15 @@ class TrustedArtifacts:
                     )
                 ),
                 for_each(
+                    apply(
+                        with_path('taskRef', 'params'),
+                        for_each(
+                            update({
+                                'name': 'bundle',
+                                'value': self.prefetch_dependencies_ref
+                            }, lambda p: p['name'] == 'bundle')
+                        )
+                    ),
                     apply(
                         delete_key('when'),
                         with_path('params', default=[]),
