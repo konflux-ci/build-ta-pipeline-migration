@@ -26,6 +26,13 @@ Usage:
         with open(fpath, 'r', encoding='utf-8') as file:
             pipeline = yaml.load(file)
 
+        try:
+            # This ignores things that are not PipelineRun resources, and PipelineRun resources
+            # which do not use an embedded Pipeline definition.
+            pipeline["spec"]["pipelineSpec"]
+        except KeyError:
+            continue
+
         pipeline = TrustedArtifacts().migrate(pipeline)
 
         with open(fpath, 'w', encoding='utf-8') as file:
