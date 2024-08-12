@@ -2,15 +2,23 @@ from fn import apply, with_path, if_matches, for_each, update, delete_if, task_r
 from oci import image_digest_for_tag
 
 
-GIT_CLONE_OCI_TA_REF = 'quay.io/redhat-appstudio-tekton-catalog/task-git-clone-oci-ta:0.1'
+GIT_CLONE_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1'
 
-PREFETCH_DEPENDENCIES_OCI_TA_REF = 'quay.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies-oci-ta:0.1'
+PREFETCH_DEPENDENCIES_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.1'
 
-BUILDAH_OCI_TA_REF = 'quay.io/redhat-appstudio-tekton-catalog/task-buildah-oci-ta:0.1'
+BUILDAH_OCI_TA_0_1_REF = 'quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.1'
 
-SAST_SNYK_CHECK_OCI_TA_REF = 'quay.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check-oci-ta:0.1'
+BUILDAH_OCI_TA_0_2_REF = 'quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.2'
 
-SOURCE_BUILD_OCI_TA_REF = 'quay.io/redhat-appstudio-tekton-catalog/task-source-build-oci-ta:0.1'
+SAST_SNYK_CHECK_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.1'
+
+SOURCE_BUILD_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.1'
+
+# TODO: Add support for buildah-remote Task versions 0.1 and 0.2.
+
+# TODO: Add support for the oci-copy Task.
+
+PUSH_DOCKERFILE_REF = 'quay.io/konflux-ci/tekton-catalog/task-push-dockerfile-oci-ta:0.1'
 
 class TrustedArtifacts:
     def __init__(self):
@@ -19,9 +27,11 @@ class TrustedArtifacts:
         self.prefetch_source_artifact = _
         self.git_clone_ref = GIT_CLONE_OCI_TA_REF + '@' + image_digest_for_tag(GIT_CLONE_OCI_TA_REF)
         self.prefetch_dependencies_ref = PREFETCH_DEPENDENCIES_OCI_TA_REF + '@' + image_digest_for_tag(PREFETCH_DEPENDENCIES_OCI_TA_REF)
-        self.buildah_ref = BUILDAH_OCI_TA_REF + '@' + image_digest_for_tag(BUILDAH_OCI_TA_REF)
+        self.buildah_0_1_ref = BUILDAH_OCI_TA_0_1_REF + '@' + image_digest_for_tag(BUILDAH_OCI_TA_0_1_REF)
+        self.buildah_0_2_ref = BUILDAH_OCI_TA_0_2_REF + '@' + image_digest_for_tag(BUILDAH_OCI_TA_0_2_REF)
         self.sast_snyk_check_ref = SAST_SNYK_CHECK_OCI_TA_REF + '@' + image_digest_for_tag(SAST_SNYK_CHECK_OCI_TA_REF)
         self.source_build_ref = SOURCE_BUILD_OCI_TA_REF + '@' + image_digest_for_tag(SOURCE_BUILD_OCI_TA_REF)
+        self.push_dockerfile_ref = PUSH_DOCKERFILE_REF + '@' + image_digest_for_tag(PUSH_DOCKERFILE_REF)
 
     def migrate(self, p):
         try:
@@ -30,7 +40,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^git-clone$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-git-clone:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-git-clone:0\\.1@'
                     )
                 ),
                 nth(0),
@@ -51,7 +61,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^prefetch-dependencies$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0\\.1@'
                     )
                 ),
                 nth(0),
@@ -68,10 +78,11 @@ class TrustedArtifacts:
 
         p = self._migrate_git_clone(p)
         p = self._migrate_prefetch_dependencies(p)
-        p = self._migrate_build_container(p)
+        p = self._migrate_build_container_0_1(p)
         p = self._migrate_sast_snyk_check(p)
         p = self._migrate_source_build(p)
         p = self._migrate_rhtas_go_unit_test(p)
+        p = self._migrate_push_dockerfile(p)
         p = self._drop_show_summary(p)
         # TODO: Probably need to be cautious about other Tasks that use it?
         p = self._drop_shared_workspace(p)
@@ -86,7 +97,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^git-clone$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-git-clone:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-git-clone:0\\.1@'
                     )
                 ),
                 for_each(
@@ -128,7 +139,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^prefetch-dependencies$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-prefetch-dependencies:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0\\.1@'
                     )
                 ),
                 for_each(
@@ -162,7 +173,7 @@ class TrustedArtifacts:
             lambda _: p
         )(p)
 
-    def _migrate_build_container(self, p):
+    def _migrate_build_container_0_1(self, p):
         # TODO: This only supports the buildah Task. It's unclear how much support is needed for the
         # s2i Tasks. My understanding is that these are pseudo-deprecated. At least, there are no
         # Trusted Artifacts variants of them. We may need to add support for the other buildah
@@ -173,7 +184,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^buildah$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-buildah:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-buildah:0\\.1@'
                     )
                 ),
                 for_each(
@@ -186,7 +197,44 @@ class TrustedArtifacts:
                         for_each(
                             update({
                                 'name': 'bundle',
-                                'value': self.buildah_ref
+                                'value': self.buildah_0_1_ref
+                                }, lambda p: p['name'] == 'bundle'),
+                            update({
+                                'name': 'name',
+                                'value': 'buildah-oci-ta'
+                                }, lambda p: p['name'] == 'name'),
+                        )
+                    ),
+                    apply(
+                        with_path('workspaces'),
+                        delete_if(lambda p: p['name'] == 'source')
+                    ),
+                ),
+            ),
+            lambda _: p
+        )(p)
+
+    def _migrate_build_container_0_2(self, p):
+        return apply(
+            apply(
+                with_path('spec', 'pipelineSpec', 'tasks'),
+                if_matches(
+                    task_ref_matches(
+                        '^buildah$',
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-buildah:0\\.2@'
+                    )
+                ),
+                for_each(
+                    apply(
+                        with_path('params', default=[]),
+                        *self.prefetch_artifact
+                    ),
+                    apply(
+                        with_path('taskRef', 'params'),
+                        for_each(
+                            update({
+                                'name': 'bundle',
+                                'value': self.buildah_0_2_ref
                                 }, lambda p: p['name'] == 'bundle'),
                             update({
                                 'name': 'name',
@@ -210,7 +258,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^sast-snyk-check$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-sast-snyk-check:0\\.1@'
                     )
                 ),
                 for_each(
@@ -247,7 +295,7 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^source-build$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-source-build:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-source-build:0\\.1@'
                     )
                 ),
                 for_each(
@@ -296,6 +344,43 @@ class TrustedArtifacts:
             lambda _: p
         )(p)
 
+    def _migrate_push_dockerfile(self, p):
+        return apply(
+            apply(
+                with_path('spec', 'pipelineSpec', 'tasks'),
+                if_matches(
+                    task_ref_matches(
+                        '^push-dockerfile$',
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-push-dockerfile:0\\.1@'
+                    )
+                ),
+                for_each(
+                    apply(
+                        with_path('params', default=[]),
+                        self.prefetch_source_artifact,
+                    ),
+                    apply(
+                        with_path('taskRef', 'params'),
+                        for_each(
+                            update({
+                                'name': 'bundle',
+                                'value': self.push_dockerfile_ref
+                                }, lambda p: p['name'] == 'bundle'),
+                            update({
+                                'name': 'name',
+                                'value': 'push-dockerfile-oci-ta'
+                                }, lambda p: p['name'] == 'name'),
+                        )
+                    ),
+                    apply(
+                        with_path('workspaces'),
+                        delete_if(lambda p: p['name'] == 'workspace')
+                    ),
+                ),
+            ),
+            lambda _: p
+        )(p)
+
     def _drop_show_summary(self, p):
         return apply(
             apply(
@@ -303,7 +388,7 @@ class TrustedArtifacts:
                 delete_if(
                     task_ref_matches(
                         '^summary$',
-                        '^quay\\.io/redhat-appstudio-tekton-catalog/task-summary:'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-summary:'
                     ),
                 ),
             ),
