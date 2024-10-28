@@ -79,6 +79,7 @@ class TrustedArtifacts:
         p = self._migrate_git_clone(p)
         p = self._migrate_prefetch_dependencies(p)
         p = self._migrate_build_container_0_1(p)
+        p = self._migrate_build_container_0_2(p)
         p = self._migrate_sast_snyk_check(p)
         p = self._migrate_source_build(p)
         p = self._migrate_rhtas_go_unit_test(p)
