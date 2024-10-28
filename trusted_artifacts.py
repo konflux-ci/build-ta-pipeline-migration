@@ -147,7 +147,6 @@ class TrustedArtifacts:
                     apply(
                         delete_key('when'),
                         with_path('params', default=[]),
-                        append({'name': 'hermetic', 'value': '${params.hermetic}'}),
                         self.git_clone_artifact,
                         append({'name': 'ociStorage', 'value': '$(params.output-image).prefetch'}),
                         append({'name': 'ociArtifactExpiresAfter', 'value': '$(params.image-expires-after)'}),
