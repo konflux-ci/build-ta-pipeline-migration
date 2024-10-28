@@ -10,7 +10,7 @@ BUILDAH_OCI_TA_0_1_REF = 'quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:
 
 BUILDAH_OCI_TA_0_2_REF = 'quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.2'
 
-SAST_SNYK_CHECK_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.1'
+SAST_SNYK_CHECK_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.3'
 
 SOURCE_BUILD_OCI_TA_REF = 'quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.1'
 
@@ -259,13 +259,13 @@ class TrustedArtifacts:
                 if_matches(
                     task_ref_matches(
                         '^sast-snyk-check$',
-                        '^quay\\.io/konflux-ci/tekton-catalog/task-sast-snyk-check:0\\.1@'
+                        '^quay\\.io/konflux-ci/tekton-catalog/task-sast-snyk-check:0\\.[123]@'
                     )
                 ),
                 for_each(
                     apply(
                         with_path('params', default=[]),
-                        self.prefetch_source_artifact,
+                        *self.prefetch_artifact,
                     ),
                     apply(
                         with_path('taskRef', 'params'),
