@@ -1,3 +1,5 @@
+# **DEPRECATED: This repo is now deprecated as this work seems no longer relevant**
+
 # Build Migration
 
 Tool to migrate Konflux build Pipelines to use the [Trusted
